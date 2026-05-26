@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { openDotaClient } from '@/lib/api/opendota-client'
+import { createStratzClient, HERO_DETAILS_QUERY, ABILITY_BUILD_QUERY } from '@/lib/api/stratz-client'
 import { getCached, CACHE_TTL } from '@/lib/redis'
 import { HEROES } from '@/lib/constants/heroes'
 import { calcWinRate } from '@/lib/utils/stats-calc'
-import type { HeroDetails, HeroMatchup } from '@/types/dota'
+import type { HeroDetails, HeroMatchup, ItemBuild, AbilityLevel } from '@/types/dota'
+import type { HeroDetailsResponse, AbilityBuildResponse, StratzItemPurchase, StratzAbilityLevel } from '@/lib/api/stratz-client'
 
 export async function GET(
   request: Request,
@@ -11,7 +13,7 @@ export async function GET(
 ) {
   const { id } = await params
   const heroId = parseInt(id)
-
+  
   if (isNaN(heroId) || !HEROES[heroId]) {
     return NextResponse.json(
       { error: 'Invalid hero ID' },
@@ -50,6 +52,36 @@ export async function GET(
           .sort((a, b) => b.matchCount - a.matchCount)
           .slice(0, 20)
 
+        // Fetch STRATZ data for item builds and ability builds
+        const stratzClient = createStratzClient()
+        let itemBuilds: ItemBuild[] = []
+        let abilityBuild: AbilityLevel[] = []
+
+        try {
+          // Fetch item purchases
+          const itemData = await stratzClient.request<HeroDetailsResponse>({
+            query: HERO_DETAILS_QUERY,
+            variables: { heroId },
+          })
+
+          if (itemData?.heroStats?.itemPurchase) {
+            itemBuilds = processItemBuilds(itemData.heroStats.itemPurchase)
+          }
+
+          // Fetch ability build
+          const abilityData = await stratzClient.request<AbilityBuildResponse>({
+            query: ABILITY_BUILD_QUERY,
+            variables: { heroId },
+          })
+
+          if (abilityData?.heroStats?.abilityMaxLevel) {
+            abilityBuild = processAbilityBuild(abilityData.heroStats.abilityMaxLevel)
+          }
+        } catch (stratzError) {
+          console.warn(`[STRATZ] Failed to fetch data for hero ${heroId}:`, stratzError)
+          // Continue with empty item/ability builds if STRATZ fails
+        }
+
         return {
           heroId,
           hero,
@@ -60,8 +92,8 @@ export async function GET(
           winRate: calcWinRate(proWin, proPick),
           pickRate: 0, // Would need total match count
           banRate: 0,
-          itemBuilds: [], // Would need STRATZ API for item builds
-          abilityBuild: [], // Would need STRATZ API for ability builds
+          itemBuilds,
+          abilityBuild,
           matchups: processedMatchups,
         }
       },
@@ -76,4 +108,71 @@ export async function GET(
       { status: 500 }
     )
   }
+}
+
+function processItemBuilds(purchases: StratzItemPurchase[]): ItemBuild[] {
+  // Group items and calculate stats
+  const itemMap = new Map<number, { wins: number; matches: number; times: number[] }>()
+  
+  for (const purchase of purchases) {
+    const existing = itemMap.get(purchase.itemId)
+    if (existing) {
+      existing.wins += purchase.wins
+      existing.matches += purchase.matchCount
+      existing.times.push(purchase.time)
+    } else {
+      itemMap.set(purchase.itemId, {
+        wins: purchase.wins,
+        matches: purchase.matchCount,
+        times: [purchase.time],
+      })
+    }
+  }
+
+  const result: ItemBuild[] = []
+  for (const [itemId, data] of itemMap.entries()) {
+    const avgTime = data.times.reduce((a, b) => a + b, 0) / data.times.length
+    const phase = getPhase(avgTime)
+    
+    result.push({
+      itemId,
+      itemName: getItemName(itemId),
+      itemIcon: getItemIcon(itemId),
+      wins: data.wins,
+      matches: data.matches,
+      winRate: calcWinRate(data.wins, data.matches),
+      avgTime: Math.round(avgTime / 60), // Convert to minutes
+      phase,
+    })
+  }
+
+  // Sort by match count and take top 15
+  return result.sort((a, b) => b.matches - a.matches).slice(0, 15)
+}
+
+function getPhase(timeInSeconds: number): 'early' | 'mid' | 'late' {
+  if (timeInSeconds < 600) return 'early' // Before 10 min
+  if (timeInSeconds < 1500) return 'mid' // 10-25 min
+  return 'late' // After 25 min
+}
+
+function getItemName(itemId: number): string {
+  // Simple mapping - in production you'd use Dota constants
+  return `Item ${itemId}`
+}
+
+function getItemIcon(itemId: number): string {
+  return `https://cdn.stratz.com/items/${itemId}.png`
+}
+
+function processAbilityBuild(abilities: StratzAbilityLevel[]): AbilityLevel[] {
+  // Sort by level and match count to get most common ability progression
+  return abilities
+    .sort((a, b) => a.level - b.level || b.matchCount - a.matchCount)
+    .map((ability, index) => ({
+      abilityId: ability.abilityId,
+      abilityName: `Ability ${ability.abilityId}`,
+      level: ability.level,
+      order: index + 1,
+    }))
 }
