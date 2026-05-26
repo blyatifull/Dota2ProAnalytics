@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -266,19 +267,24 @@ function ItemBuildsSection({ itemBuilds }: { itemBuilds: ItemBuild[] }) {
 }
 
 function ItemCard({ item }: { item: ItemBuild }) {
+    const [imageError, setImageError] = useState(false)
+    
     return (
         <div className="flex flex-col items-center p-3 rounded-lg bg-secondary/50 space-y-2">
             <div className="relative w-12 h-12">
-                <Image
-                    src={item.itemIcon}
-                    alt={item.itemName}
-                    fill
-                    className="object-contain"
-                    onError={(e) => {
-                        // Fallback if image fails to load
-                        e.currentTarget.src = '/placeholder-item.png'
-                    }}
-                />
+                {!imageError && item.itemIcon ? (
+                    <Image
+                        src={item.itemIcon}
+                        alt={item.itemName}
+                        fill
+                        className="object-contain"
+                        onError={() => setImageError(true)}
+                    />
+                ) : (
+                    <div className="w-full h-full bg-muted rounded flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">?</span>
+                    </div>
+                )}
             </div>
             <span className="text-sm font-medium text-center">{item.itemName}</span>
             <div className="text-xs text-muted-foreground text-center">
