@@ -69,6 +69,27 @@ export class OpenDotaClient {
   async getLeagues(): Promise<LeagueResponse[]> {
     return this.request<LeagueResponse[]>('/leagues')
   }
+
+  /**
+   * Get hero matches with item and ability data
+   */
+  async getHeroMatchesWithDetails(heroId: number, limit = 100): Promise<DetailedMatchResponse[]> {
+    return this.request<DetailedMatchResponse[]>(`/heroes/${heroId}/matches?limit=${limit}`)
+  }
+
+  /**
+   * Get constants items
+   */
+  async getItems(): Promise<Record<string, ItemConstant>> {
+    return this.request<Record<string, ItemConstant>>('/constants/items')
+  }
+
+  /**
+   * Get constants abilities
+   */
+  async getAbilities(): Promise<Record<string, AbilityConstant>> {
+    return this.request<Record<string, AbilityConstant>>('/constants/abilities')
+  }
 }
 
 // Response types
@@ -304,6 +325,62 @@ export interface LeagueResponse {
   banner: string
   tier: string
   name: string
+}
+
+export interface DetailedMatchResponse extends PublicMatchResponse {
+  ability_upgrades?: AbilityUpgrade[]
+  item_0: number
+  item_1: number
+  item_2: number
+  item_3: number
+  item_4: number
+  item_5: number
+  backpack_0: number
+  backpack_1: number
+  backpack_2: number
+  purchase_log?: PurchaseLogEntry[]
+  kills_log?: KillLogEntry[]
+  lane_pos?: Record<string, Record<string, number>>
+}
+
+export interface AbilityUpgrade {
+  ability: number
+  time: number
+  level: number
+}
+
+export interface ItemConstant {
+  id: number
+  img: string
+  dname: string
+  qual: string
+  cost: number
+  desc?: string
+  attrib?: Array<{ key: string; value: string | number; display?: string }>
+  mc: boolean | number
+  cd: boolean | number
+  lore?: string
+  components?: string[] | null
+  created: boolean
+  charges?: boolean | number
+}
+
+export interface AbilityConstant {
+  id: number
+  img: string
+  dname: string
+  description?: string
+  behavior?: string | string[]
+  dmg_type?: string
+  bkbpierce?: string
+  target_type?: string
+  dispellable?: string
+  notes?: string
+  attrib?: Array<{ key: string; value: string | number; display?: string }>
+  mc: boolean | number
+  hc: boolean | number
+  cd: boolean | number
+  lore?: string
 }
 
 // Export singleton instance
