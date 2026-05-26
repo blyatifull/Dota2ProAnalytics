@@ -215,8 +215,8 @@ function ItemBuildsSection({ itemBuilds }: { itemBuilds: ItemBuild[] }) {
                         <CardTitle>Ранняя игра (0-10 мин)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {earlyItems.map(item => (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            {earlyItems.slice(0, 12).map(item => (
                                 <ItemCard key={item.itemId} item={item} />
                             ))}
                         </div>
@@ -230,8 +230,8 @@ function ItemBuildsSection({ itemBuilds }: { itemBuilds: ItemBuild[] }) {
                         <CardTitle>Мид игра (10-25 мин)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {midItems.map(item => (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            {midItems.slice(0, 12).map(item => (
                                 <ItemCard key={item.itemId} item={item} />
                             ))}
                         </div>
@@ -245,8 +245,8 @@ function ItemBuildsSection({ itemBuilds }: { itemBuilds: ItemBuild[] }) {
                         <CardTitle>Лейт игра (25+ мин)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {lateItems.map(item => (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            {lateItems.slice(0, 12).map(item => (
                                 <ItemCard key={item.itemId} item={item} />
                             ))}
                         </div>
@@ -306,6 +306,14 @@ function AbilityBuildSection({ abilityBuild }: { abilityBuild: AbilityLevel[] })
     // Group abilities by level
     const levelsByOrder = abilityBuild.sort((a, b) => a.order - b.order)
 
+    // Group by ability to show progression
+    const abilityGroups = new Map<number, AbilityLevel[]>()
+    for (const ability of levelsByOrder) {
+        const existing = abilityGroups.get(ability.abilityId) || []
+        existing.push(ability)
+        abilityGroups.set(ability.abilityId, existing)
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -313,32 +321,42 @@ function AbilityBuildSection({ abilityBuild }: { abilityBuild: AbilityLevel[] })
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    <div className="grid grid-cols-8 md:grid-cols-15 gap-2">
-                        {levelsByOrder.map((ability, index) => (
-                            <div
-                                key={`${ability.abilityId}-${ability.level}`}
-                                className="flex flex-col items-center p-2 rounded-lg bg-secondary/50"
-                            >
-                                <span className="text-xs text-muted-foreground">Ур {ability.level}</span>
-                                <span className="text-sm font-medium">{ability.abilityName}</span>
-                            </div>
-                        ))}
+                    {/* Show ability progression */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {Array.from(abilityGroups.entries()).map(([abilityId, abilities]) => {
+                            const sortedAbilities = abilities.sort((a, b) => a.level - b.level)
+                            return (
+                                <div key={abilityId} className="p-3 rounded-lg bg-secondary/50">
+                                    <h4 className="font-semibold mb-2">{sortedAbilities[0]?.abilityName}</h4>
+                                    <div className="flex flex-wrap gap-1">
+                                        {sortedAbilities.map((ability) => (
+                                            <span
+                                                key={`${ability.abilityId}-${ability.level}`}
+                                                className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded"
+                                            >
+                                                Ур. {ability.level}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
 
-                    {/* Ability summary */}
+                    {/* Timeline view */}
                     <div className="mt-6">
-                        <h4 className="text-lg font-semibold mb-3">Сводка по уровням способностей</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {Array.from(new Set(abilityBuild.map(a => a.abilityId))).map(abilityId => {
-                                const abilityAbilities = abilityBuild.filter(a => a.abilityId === abilityId)
-                                const maxLevel = Math.max(...abilityAbilities.map(a => a.level))
-                                return (
-                                    <div key={abilityId} className="p-3 rounded-lg bg-secondary/50">
-                                        <div className="font-medium">{abilityAbilities[0]?.abilityName || `Способность ${abilityId}`}</div>
-                                        <div className="text-sm text-muted-foreground">Макс уровень: {maxLevel}</div>
-                                    </div>
-                                )
-                            })}
+                        <h4 className="text-lg font-semibold mb-3">Последовательность по уровням</h4>
+                        <div className="grid grid-cols-8 md:grid-cols-15 lg:grid-cols-25 gap-1">
+                            {levelsByOrder.slice(0, 25).map((ability) => (
+                                <div
+                                    key={`${ability.abilityId}-${ability.order}`}
+                                    className="flex flex-col items-center p-1 rounded bg-secondary/50"
+                                    title={ability.abilityName}
+                                >
+                                    <span className="text-[10px] text-muted-foreground">{ability.order}</span>
+                                    <span className="text-xs font-medium truncate w-full text-center">{ability.abilityName.substring(0, 3)}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

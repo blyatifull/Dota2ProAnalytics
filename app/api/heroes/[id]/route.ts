@@ -3,8 +3,9 @@ import { openDotaClient } from '@/lib/api/opendota-client'
 import { getCached, CACHE_TTL } from '@/lib/redis'
 import { HEROES } from '@/lib/constants/heroes'
 import { calcWinRate } from '@/lib/utils/stats-calc'
+import { getGenericBuildByRole } from '@/lib/data/hero-item-builds'
 import type { HeroDetails, HeroMatchup, ItemBuild, AbilityLevel } from '@/types/dota'
-import type { DetailedMatchResponse, ItemConstant, AbilityConstant, AbilityUpgrade } from '@/lib/api/opendota-client'
+import type { DetailedMatchResponse, ItemConstant, AbilityConstant, AbilityUpgrade, MatchResponse } from '@/lib/api/opendota-client'
 
 export async function GET(
     request: Request,
@@ -56,23 +57,58 @@ export async function GET(
                 let abilityBuild: AbilityLevel[] = []
 
                 try {
-                    // Fetch matches for this hero with item/ability data
-                    const matches = await openDotaClient.getHeroMatchesWithDetails(heroId, 100)
-
-                    // Fetch items and abilities constants
+                    // Fetch items and abilities constants first
                     const [items, abilities] = await Promise.all([
                         openDotaClient.getItems(),
                         openDotaClient.getAbilities(),
                     ])
 
+                    // Fetch recent pro matches to get match IDs for this hero
+                    const proMatches = await openDotaClient.getProMatches(50)
+                    
+                    // Filter matches that include this hero and get their IDs
+                    const matchIdsForHero = proMatches
+                        .filter(m => {
+                            // We need to check if hero is in the match by fetching details
+                            return true // We'll filter after fetching details
+                        })
+                        .map(m => m.match_id)
+                        .slice(0, 20) // Limit to 20 matches for performance
+
+                    // Fetch full match details for each match
+                    const detailedMatchesPromises = matchIdsForHero.map(matchId => 
+                        openDotaClient.getMatch(matchId).catch(() => null)
+                    )
+                    const detailedMatches = await Promise.all(detailedMatchesPromises)
+                    
+                    // Filter matches that have our hero
+                    const heroMatches = detailedMatches.filter(m => {
+                        if (!m) return false
+                        return m.players.some(p => p.hero_id === heroId)
+                    }) as MatchResponse[]
+
                     // Process item builds from matches
-                    itemBuilds = processItemBuildsFromMatches(matches, items)
+                    itemBuilds = processItemBuildsFromFullMatches(heroMatches, heroId, items)
 
                     // Process ability build from matches
-                    abilityBuild = processAbilityBuildFromMatches(matches, abilities)
+                    abilityBuild = processAbilityBuildFromFullMatches(heroMatches, heroId, abilities)
                 } catch (opendotaError) {
                     console.warn(`[OpenDota] Failed to fetch detailed data for hero ${heroId}:`, opendotaError)
                     // Continue with empty item/ability builds if OpenDota fails
+                }
+
+                // Fallback to generic builds if no data from OpenDota
+                if (itemBuilds.length === 0 || abilityBuild.length === 0) {
+                    const heroRole = hero.roles[0] || 'support'
+                    const genericBuild = getGenericBuildByRole(heroRole)
+                    
+                    // Use generic builds as fallback
+                    if (itemBuilds.length === 0) {
+                        itemBuilds = genericBuild.itemBuilds
+                    }
+                    if (abilityBuild.length === 0) {
+                        abilityBuild = genericBuild.abilityBuild
+                    }
                 }
 
                 return {
@@ -103,8 +139,9 @@ export async function GET(
     }
 }
 
-function processItemBuildsFromMatches(
-    matches: DetailedMatchResponse[],
+function processItemBuildsFromFullMatches(
+    matches: MatchResponse[],
+    heroId: number,
     items: Record<string, ItemConstant>
 ): ItemBuild[] {
     // Group items by ID and track wins, matches, and purchase times
@@ -117,20 +154,24 @@ function processItemBuildsFromMatches(
     }>()
 
     for (const match of matches) {
-        const isWin = match.radiant_win === (match.player_slot < 128)
+        // Find the player with this hero
+        const player = match.players.find(p => p.hero_id === heroId)
+        if (!player) continue
+
+        const isWin = match.radiant_win === (player.player_slot < 128)
         const duration = match.duration
 
         // Collect all items from the match (including backpack)
         const itemIds = [
-            match.item_0, match.item_1, match.item_2,
-            match.item_3, match.item_4, match.item_5,
-            match.backpack_0, match.backpack_1, match.backpack_2
+            player.item_0, player.item_1, player.item_2,
+            player.item_3, player.item_4, player.item_5,
+            player.backpack_0, player.backpack_1, player.backpack_2
         ].filter(id => id !== 0 && id !== undefined)
 
         // Process purchase log if available for timing
         const purchaseTimes = new Map<number, number>()
-        if (match.purchase_log) {
-            for (const purchase of match.purchase_log) {
+        if (player.purchase_log) {
+            for (const purchase of player.purchase_log) {
                 const itemId = getItemIdFromKey(purchase.key)
                 if (itemId && !purchaseTimes.has(itemId)) {
                     purchaseTimes.set(itemId, purchase.time)
@@ -154,7 +195,7 @@ function processItemBuildsFromMatches(
                     matches: 1,
                     times: [purchaseTimes.get(itemId) ?? duration],
                     itemName: itemData.dname,
-                    itemIcon: `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/${itemId}.png`,
+                    itemIcon: `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/${itemData.img}`,
                 })
             }
         }
@@ -177,12 +218,13 @@ function processItemBuildsFromMatches(
         })
     }
 
-    // Sort by match count and take top 15 per phase
-    return result.sort((a, b) => b.matches - a.matches).slice(0, 15)
+    // Sort by match count and take top items
+    return result.sort((a, b) => b.matches - a.matches)
 }
 
-function processAbilityBuildFromMatches(
-    matches: DetailedMatchResponse[],
+function processAbilityBuildFromFullMatches(
+    matches: MatchResponse[],
+    heroId: number,
     abilities: Record<string, AbilityConstant>
 ): AbilityLevel[] {
     // Track ability upgrades by level
@@ -195,26 +237,41 @@ function processAbilityBuildFromMatches(
     }>()
 
     for (const match of matches) {
-        if (!match.ability_upgrades || match.ability_upgrades.length === 0) {
+        // Find the player with this hero
+        const player = match.players.find(p => p.hero_id === heroId)
+        if (!player || !player.ability_upgrades_arr || player.ability_upgrades_arr.length === 0) {
             continue
         }
 
-        // Sort ability upgrades by time to get the order
-        const sortedUpgrades = [...match.ability_upgrades].sort((a, b) => a.time - b.time)
-
-        for (let i = 0; i < sortedUpgrades.length; i++) {
-            const upgrade = sortedUpgrades[i]
-            const key = `${upgrade.ability}-${upgrade.level}`
-            const abilityData = abilities[`ability_${upgrade.ability}`] || abilities[`${upgrade.ability}`]
+        // Process ability upgrades - they come as an array of ability IDs in order
+        const abilityUpgradesArr = player.ability_upgrades_arr
+        
+        // We need to track which level each ability is at as we go through the upgrades
+        const abilityLevelCount = new Map<number, number>()
+        
+        for (let i = 0; i < abilityUpgradesArr.length; i++) {
+            const abilityId = abilityUpgradesArr[i]
+            
+            // Skip special abilities (like talents) which have negative IDs or very high IDs
+            if (abilityId <= 0 || abilityId > 1000) {
+                continue
+            }
+            
+            // Increment the level for this ability
+            const currentLevel = (abilityLevelCount.get(abilityId) || 0) + 1
+            abilityLevelCount.set(abilityId, currentLevel)
+            
+            const key = `${abilityId}-${currentLevel}`
+            const abilityData = abilities[`ability_${abilityId}`] || abilities[`${abilityId}`]
 
             const existing = abilityLevels.get(key)
             if (existing) {
                 existing.count += 1
             } else if (abilityData) {
                 abilityLevels.set(key, {
-                    abilityId: upgrade.ability,
+                    abilityId: abilityId,
                     abilityName: abilityData.dname,
-                    level: upgrade.level,
+                    level: currentLevel,
                     order: i + 1,
                     count: 1,
                 })
@@ -271,12 +328,4 @@ function getPhase(timeInSeconds: number): 'early' | 'mid' | 'late' {
     return 'late' // After 25 min
 }
 
-function processItemBuilds(purchases: any[]): ItemBuild[] {
-    // Legacy function - kept for compatibility
-    return []
-}
-
-function processAbilityBuild(abilities: any[]): AbilityLevel[] {
-    // Legacy function - kept for compatibility
-    return []
-}
+// Remove legacy functions - no longer needed
