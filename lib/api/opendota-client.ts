@@ -43,6 +43,13 @@ export class OpenDotaClient {
   }
 
   /**
+   * Get match timeseries data (gold, xp, lh over time)
+   */
+  async getMatchTimeseries(matchId: number): Promise<TimeseriesResponse[]> {
+    return this.request<TimeseriesResponse[]>(`/matches/${matchId}/timeseries`)
+  }
+
+  /**
    * Get hero stats
    */
   async getHeroStats(): Promise<HeroStatsResponse[]> {
@@ -206,6 +213,10 @@ export interface PlayerResponse {
   // Additional
   purchase_log?: PurchaseLogEntry[]
   kills_log?: KillLogEntry[]
+  // Time series data
+  gold_t?: Array<{ time: number; gold: number }>
+  xp_t?: Array<{ time: number; xp: number }>
+  lh_t?: Array<{ time: number; lh: number }>
 }
 
 export interface WardLogEntry {

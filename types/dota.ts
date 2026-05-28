@@ -102,6 +102,17 @@ export interface MatchPlayer {
   lanePos?: Record<string, Record<string, number>>
   obsLog?: WardEvent[]
   senLog?: WardEvent[]
+  // Time series data
+  goldT?: GoldXpData[]
+  xpT?: GoldXpData[]
+  lhT?: GoldXpData[]
+}
+
+export interface GoldXpData {
+  time: number
+  gold: number
+  xp?: number
+  lh?: number
 }
 
 export interface WardEvent {
@@ -233,6 +244,18 @@ export interface OpenDotaMatchResponse {
       x: number
       y: number
       entityleft?: boolean
+    }>
+    gold_t?: Array<{
+      time: number
+      gold: number
+    }>
+    xp_t?: Array<{
+      time: number
+      xp: number
+    }>
+    lh_t?: Array<{
+      time: number
+      lh: number
     }>
   }>
   picks_bans?: Array<{
