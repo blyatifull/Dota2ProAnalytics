@@ -56,14 +56,6 @@ export function Navigation() {
             )
           })}
         </nav>
-
-        {/* Right side */}
-        <div className="ml-auto flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span>Live data from OpenDota & STRATZ</span>
-          </div>
-        </div>
       </div>
     </header>
   )

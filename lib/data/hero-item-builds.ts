@@ -10,43 +10,43 @@ export interface HeroItemBuildData {
 
 // Common items by phase
 const STARTING_ITEMS = [
-  { id: 29, name: 'Boots of Speed', img: 'items/boots.png' },
-  { id: 42, name: 'Town Portal Scroll', img: 'items/tpscroll.png' },
-  { id: 36, name: 'Magic Wand', img: 'items/magic_wand.png' },
-  { id: 185, name: 'Orb of Venom', img: 'items/orb_of_venom.png' },
-  { id: 37, name: 'Bracer', img: 'items/bracer.png' },
-  { id: 38, name: 'Wraith Band', img: 'items/wraith_band.png' },
-  { id: 39, name: 'Null Talisman', img: 'items/null_talisman.png' },
+  { id: 29, name: 'Boots of Speed', img: 'items/boots' },
+  { id: 42, name: 'Town Portal Scroll', img: 'items/tpscroll' },
+  { id: 36, name: 'Magic Wand', img: 'items/magic_wand' },
+  { id: 185, name: 'Orb of Venom', img: 'items/orb_of_venom' },
+  { id: 37, name: 'Bracer', img: 'items/bracer' },
+  { id: 38, name: 'Wraith Band', img: 'items/wraith_band' },
+  { id: 39, name: 'Null Talisman', img: 'items/null_talisman' },
 ]
 
 const EARLY_GAME = [
-  { id: 50, name: 'Power Treads', img: 'items/power_treads.png' },
-  { id: 57, name: 'Phase Boots', img: 'items/phase_boots.png' },
-  { id: 102, name: 'Arcane Boots', img: 'items/arcane_boots.png' },
-  { id: 63, name: 'Bottle', img: 'items/bottle.png' },
-  { id: 116, name: 'Black King Bar', img: 'items/black_king_bar.png' },
-  { id: 1, name: 'Blink Dagger', img: 'items/blink.png' },
-  { id: 108, name: 'Magic Stick', img: 'items/magic_stick.png' },
+  { id: 50, name: 'Power Treads', img: 'items/power_treads' },
+  { id: 57, name: 'Phase Boots', img: 'items/phase_boots' },
+  { id: 102, name: 'Arcane Boots', img: 'items/arcane_boots' },
+  { id: 63, name: 'Bottle', img: 'items/bottle' },
+  { id: 116, name: 'Black King Bar', img: 'items/black_king_bar' },
+  { id: 1, name: 'Blink Dagger', img: 'items/blink' },
+  { id: 108, name: 'Magic Stick', img: 'items/magic_stick' },
 ]
 
 const MID_GAME = [
-  { id: 123, name: 'Battle Fury', img: 'items/battle_fury.png' },
-  { id: 139, name: 'Butterfly', img: 'items/butterfly.png' },
-  { id: 149, name: 'Manta Style', img: 'items/manta.png' },
-  { id: 152, name: 'Scythe of Vyse', img: 'items/scythe.png' },
-  { id: 154, name: "Shiva's Guard", img: 'items/shivas_guard.png' },
-  { id: 158, name: 'Satanic', img: 'items/satanic.png' },
-  { id: 147, name: 'Bloodstone', img: 'items/bloodstone.png' },
+  { id: 123, name: 'Battle Fury', img: 'items/battle_fury' },
+  { id: 139, name: 'Butterfly', img: 'items/butterfly' },
+  { id: 149, name: 'Manta Style', img: 'items/manta' },
+  { id: 152, name: 'Scythe of Vyse', img: 'items/scythe' },
+  { id: 154, name: "Shiva's Guard", img: 'items/shivas_guard' },
+  { id: 158, name: 'Satanic', img: 'items/satanic' },
+  { id: 147, name: 'Bloodstone', img: 'items/bloodstone' },
 ]
 
 const LATE_GAME = [
-  { id: 141, name: 'Daedalus', img: 'items/daedalus.png' },
-  { id: 143, name: 'Divine Rapier', img: 'items/divine_rapier.png' },
-  { id: 148, name: 'Heart of Tarrasque', img: 'items/heart.png' },
-  { id: 156, name: 'Abyssal Blade', img: 'items/abyssal_blade.png' },
-  { id: 168, name: 'Refresher Orb', img: 'items/refresher_orb.png' },
-  { id: 232, name: 'Octarine Core', img: 'items/octarine_core.png' },
-  { id: 263, name: 'Hurricane Pike', img: 'items/hurricane_pike.png' },
+  { id: 141, name: 'Daedalus', img: 'items/daedalus' },
+  { id: 143, name: 'Divine Rapier', img: 'items/divine_rapier' },
+  { id: 148, name: 'Heart of Tarrasque', img: 'items/heart' },
+  { id: 156, name: 'Abyssal Blade', img: 'items/abyssal_blade' },
+  { id: 168, name: 'Refresher Orb', img: 'items/refresher_orb' },
+  { id: 232, name: 'Octarine Core', img: 'items/octarine_core' },
+  { id: 263, name: 'Hurricane Pike', img: 'items/hurricane_pike' },
 ]
 
 function createItemBuild(
@@ -61,7 +61,7 @@ function createItemBuild(
   return {
     itemId,
     itemName,
-    itemIcon: `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/${itemIcon}.png`,
+    itemIcon: `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/${itemIcon}`,
     wins: baseWins,
     matches: baseMatches,
     winRate: (baseWins / baseMatches) * 100,
