@@ -77,6 +77,8 @@ export interface MatchDetails extends ProMatch {
   players: MatchPlayer[]
   pickBans: PickBan[]
   objectives: Objective[]
+  radiantGoldAdv?: number[]
+  radiantXpAdv?: number[]
 }
 
 export interface MatchPlayer {

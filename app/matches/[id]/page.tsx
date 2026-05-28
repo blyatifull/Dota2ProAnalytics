@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Map, Users, Swords, Trophy, Clock, Target, Skull } from 'lucide-react'
+import { ArrowLeft, Map, Users, Swords, Trophy, Clock, Target, Skull, TrendingUp } from 'lucide-react'
 import { HEROES } from '@/lib/constants/heroes'
 import { formatDuration } from '@/lib/utils/stats-calc'
 import { cn } from '@/lib/utils'
 import type { MatchDetails } from '@/types/dota'
+import { GoldXpGraph, PlayerGoldGraph } from '@/components/matches'
 
 async function getMatchDetails(matchId: number): Promise<MatchDetails | null> {
   try {
@@ -155,6 +156,13 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
                 Drafts
               </TabsTrigger>
               <TabsTrigger
+                  value="graphs"
+                  className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex items-center gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Graphs
+              </TabsTrigger>
+              <TabsTrigger
                   value="map"
                   className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex items-center gap-2"
               >
@@ -182,6 +190,13 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
 
             <TabsContent value="draft">
               <DraftView pickBans={match.pickBans} />
+            </TabsContent>
+
+            <TabsContent value="graphs">
+              <div className="space-y-6">
+                <GoldXpGraph match={match} />
+                <PlayerGoldGraph match={match} />
+              </div>
             </TabsContent>
 
             <TabsContent value="map">
